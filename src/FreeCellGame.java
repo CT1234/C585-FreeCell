@@ -23,7 +23,7 @@ public class FreeCellGame extends JPanel implements MouseListener, MouseMotionLi
 	int[] columnHeights = new int[8];
 	List<Stack<Integer>> foundations = new ArrayList<Stack<Integer>>();
 	List<List<Integer>> columns = new ArrayList<List<Integer>>();
-
+	ArrayList<Integer> cardGroups = new ArrayList<Integer>();
 	
 	private void initializeDataStructures()
 	{
@@ -51,21 +51,14 @@ public class FreeCellGame extends JPanel implements MouseListener, MouseMotionLi
 	
 	public boolean checkFoundationInsert(int foundationIndex, Integer cardValue)
 	{
-		Integer foundationValue = -1;
-		if(!foundations.get(foundationIndex).isEmpty())
+		boolean foundationEmpty = foundations.get(foundationIndex).isEmpty();
+		if(foundationEmpty && (cardValue.equals(0) || cardValue.equals(13) || 
+							   cardValue.equals(26) || cardValue.equals(39)))
 		{
-			foundationValue.equals(foundations.get(foundationIndex).peek());
-		}
-		if(foundations.get(foundationIndex).isEmpty() && (cardValue.equals(0) || 
-				cardValue.equals(13) || cardValue.equals(26) || cardValue.equals(39)))
-		{
-			foundations.get(foundationIndex).push(cardValue);
-			System.out.println("What is the stack size?: " + foundations.get(foundationIndex).size());
 			return true;
 		}
-		else if(cardValue - foundationValue == 1)
+		else if(!foundationEmpty && ((cardValue - foundations.get(foundationIndex).peek()) == 1))
 		{
-			foundations.get(foundationIndex).push(cardValue);
 			return true;
 		}
 		return false;
@@ -74,6 +67,10 @@ public class FreeCellGame extends JPanel implements MouseListener, MouseMotionLi
 	public void fillFreeCell(int cellIndex, int cardIndex)
 	{
 		freeCells[cellIndex] = cardIndex;
+	}
+	
+	public void fillFoundation(int foundationColumn, Integer cardNum) {
+		foundations.get(foundationColumn).push(cardNum);
 	}
 	
 	public void removeOldspots(int cardIndex)
@@ -94,12 +91,17 @@ public class FreeCellGame extends JPanel implements MouseListener, MouseMotionLi
 		}
 		for(List<Integer> curColumn : columns)
 		{
-			int lastElement = curColumn.size()-1;
-			if(curColumn.get(lastElement) == cardIndex)
+			if(!curColumn.isEmpty())
 			{
-				curColumn.remove(lastElement);
-				columnHeights[columns.indexOf(curColumn)] -= 40;
-			}
+				for(int i = 0; i < curColumn.size(); i++)
+				{
+					if(curColumn.get(i) == cardIndex)
+					{
+						curColumn.remove(i);
+						columnHeights[columns.indexOf(curColumn)] -= 40;
+					}
+				}
+			}			
 		}
 	}
 	
@@ -120,13 +122,15 @@ public class FreeCellGame extends JPanel implements MouseListener, MouseMotionLi
 		}
 		for(List<Integer> curColumn : columns)
 		{
-			int lastElement = curColumn.size()-1;
-			int index = curColumn.get(curColumn.size()-1);
-			allCards[index].setDraggable(true);
-			while(lastElement > 0)
+			if(!curColumn.isEmpty())
 			{
-//				System.out.println((allCards[lastElement].getCardNum()) + " False");
-				allCards[curColumn.get(--lastElement)].setDraggable(false); //TODO setup column chains
+				int lastElement = curColumn.size()-1;
+				int index = curColumn.get(curColumn.size()-1);
+				allCards[index].setDraggable(true);
+				while(lastElement > 0)
+				{
+					allCards[curColumn.get(--lastElement)].setDraggable(false); 
+				}
 			}
 		}
 	}
@@ -135,7 +139,8 @@ public class FreeCellGame extends JPanel implements MouseListener, MouseMotionLi
 	{
 		BufferedImage myPicture = null;
 		try {
-			myPicture = ImageIO.read(new File("C:/Users/chris/Documents/GitHub/C585-FreeCell/src/background.jpg"));
+			myPicture = ImageIO.read(new 
+					File("C:/Users/chris/Documents/GitHub/EclipseProjects/C585-FreeCell/src/background.jpg"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -197,10 +202,42 @@ public class FreeCellGame extends JPanel implements MouseListener, MouseMotionLi
 			}
 		}
 	}
+	public boolean checkUpperCard(Integer cardNumber)
+	{
+		for(int i = 0; i < 8; i++)
+		{
+			List<Integer>currentColumn = columns.get(i);
+			for(int j = 0; j < columns.get(i).size(); j++)
+			{
+				if(cardNumber.equals(currentColumn.get(j)))
+				{
+					return checkDecreasingSequence(i,j);
+				}
+			}
+		}
+		return false;
+	}
+
+	private boolean checkDecreasingSequence(int columnIndex, int cardIndex) 
+	{
+		int size = columns.get(columnIndex).size(),
+			indexDifference = size - cardIndex -1,
+			currentCard = columns.get(columnIndex).get(cardIndex) % 13,
+			lastCard = columns.get(columnIndex).get(size-1)% 13;
+		boolean result = (currentCard - lastCard) == indexDifference;
+		if(result)
+		{
+			for(int i = cardIndex; i < size; i++)
+			{
+				cardGroups.add(columns.get(columnIndex).get(i));
+			}
+		}
+			return result;
+	}
 
 	public CardImagePanel[] generateCards(CardImagePanel[] allCards)
 	{
-	  File folder = new File("C:/Users/chris/Documents/GitHub/C585-FreeCell/src/images");
+	  File folder = new File("C:/Users/chris/Documents/GitHub/EclipseProjects/C585-FreeCell/src/images");
 	  File[] listOfFiles = folder.listFiles();
 	  allCards = new CardImagePanel[52];
 	  for (File file : listOfFiles) {
@@ -275,26 +312,34 @@ public class FreeCellGame extends JPanel implements MouseListener, MouseMotionLi
 	
 	public boolean checkColumnInsert(int colmnIndex, int cardNum)
 	{
-		int lastElement = columns.get(colmnIndex).size() - 1,
-		    topStackCardForColumn = columns.get(colmnIndex).get(lastElement);
-		if(checkDifferentSuit(topStackCardForColumn, cardNum))
+		if(columns.get(colmnIndex).isEmpty())
 		{
-			if(topStackCardForColumn - cardNum == 1)
-			{
-				return true;
-			}
+			return true;
 		}
-		return false;
+		else
+		{
+			int lastElement = columns.get(colmnIndex).size() - 1,
+			    topStackCardForColumn = columns.get(colmnIndex).get(lastElement);
+			if(checkDifferentSuit(topStackCardForColumn, cardNum))
+			{
+				if((topStackCardForColumn%13) - (cardNum%13) == 1)
+				{
+					return true;
+				}
+			}
+			return false;
+		}
 	}
 	
 	private boolean checkDifferentSuit(int topCard, int cardNum)
 	{
-		boolean topCardIsBlack = topCard <= 13 || topCard >= 39,
-				newCardIsBlack = cardNum <= 13 || cardNum >= 39;
+		boolean topCardIsBlack = topCard <= 12 || topCard >= 39,
+				newCardIsBlack = cardNum <= 12 || cardNum >= 39;
 		return newCardIsBlack != topCardIsBlack;
 	}
 	
 	public static void main(String[] args){
+		@SuppressWarnings("unused")
 		FreeCellGame newGame = new FreeCellGame();
 	}
 			
