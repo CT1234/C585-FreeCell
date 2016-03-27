@@ -69,7 +69,8 @@ public class FreeCellGame extends JPanel implements MouseListener, MouseMotionLi
 		freeCells[cellIndex] = cardIndex;
 	}
 	
-	public void fillFoundation(int foundationColumn, Integer cardNum) {
+	public void fillFoundation(int foundationColumn, Integer cardNum) 
+	{
 		foundations.get(foundationColumn).push(cardNum);
 	}
 	
